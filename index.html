@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintenance management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#16202A; --slate:#4A5A69; --mute:#7B8A97;
+  --mist:#E4E9ED; --edge:#C9D3DA; --paper:#F7F9FA; --white:#fff;
+  --signal:#0E7C86; --signal-soft:#E2F1F2; --signal-deep:#0A5A62;
+  --derived:#8A4B00; --derived-soft:#FBF0E2;
+  --alert:#A3252B; --alert-soft:#FDECEC;
+  --done:#27614A; --done-soft:#E6F0EA;
+  --sans:'IBM Plex Sans',system-ui,sans-serif;
+  --cond:'IBM Plex Sans Condensed',var(--sans);
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--sans);font-size:15px;line-height:1.55;color:var(--ink);background:var(--paper)}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+
+/* ---------- masthead ---------- */
+.masthead{background:var(--ink);color:#DDE5EA;padding:14px 22px;display:flex;flex-wrap:wrap;gap:18px;
+  align-items:baseline;justify-content:space-between;border-bottom:3px solid var(--signal)}
+.masthead h1{font-family:var(--cond);font-weight:600;font-size:19px;margin:0;color:#fff}
+.masthead h1 small{display:block;font-family:var(--mono);font-size:10.5px;font-weight:400;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:3px}
+.readout{font-family:var(--mono);font-size:11.5px;color:#9FB0BC;display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+.readout b{color:var(--signal-soft);font-weight:500}
+.readout .live::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--signal);margin-right:6px;vertical-align:1px}
+@media (prefers-reduced-motion:no-preference){.readout .live::before{animation:pulse 2.4s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.25}}}
+.readout button{background:none;border:1px solid #3C4A57;border-radius:5px;color:#9FB0BC;
+  padding:3px 10px;font-size:11px;cursor:pointer;font-family:var(--mono)}
+.readout button:hover{border-color:var(--signal);color:var(--signal-soft)}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:214px 1fr;min-height:calc(100vh - 58px)}
+.rail{background:var(--white);border-right:1px solid var(--edge);padding:0 0 16px}
+.rail-head{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);padding:16px 18px 8px}
+.rail button{display:flex;width:100%;align-items:baseline;gap:8px;background:none;border:0;
+  border-left:3px solid transparent;padding:7px 18px;text-align:left;cursor:pointer;color:var(--slate)}
+.rail button:hover{background:var(--paper);color:var(--ink)}
+.rail button[aria-current=true]{border-left-color:var(--signal);background:var(--signal-soft);
+  color:var(--ink);font-weight:500}
+.rail button .n{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:auto}
+.rail .raise{margin:10px 14px 4px;width:calc(100% - 28px);background:var(--signal);color:#fff;
+  border:0;border-radius:6px;padding:9px 12px;font-weight:500;justify-content:center}
+.rail .raise:hover{background:var(--signal-deep);color:#fff}
+.main{padding:22px 26px 60px;min-width:0}
+
+h2{font-family:var(--cond);font-weight:600;font-size:26px;margin:0 0 2px}
+.sub{color:var(--slate);font-size:13.5px;margin:0 0 18px}
+.sub code{font-family:var(--mono);font-size:12px;background:var(--mist);padding:1px 5px;border-radius:3px}
+.crumb{font-family:var(--mono);font-size:11px;color:var(--mute);margin-bottom:6px}
+.crumb button{background:none;border:0;padding:0;color:var(--signal);cursor:pointer;font:inherit;text-decoration:underline}
+
+.bar{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.btn{background:var(--signal);color:#fff;border:0;border-radius:5px;padding:8px 15px;
+  font-weight:500;font-size:14px;cursor:pointer}
+.btn:hover{background:var(--signal-deep)}
+.btn.ghost{background:none;color:var(--signal);border:1px solid var(--edge)}
+.btn.ghost:hover{background:var(--signal-soft)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.search{flex:1;min-width:150px;max-width:270px;padding:8px 11px;border:1px solid var(--edge);
+  border-radius:5px;background:var(--white)}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filters .seg{display:flex;border:1px solid var(--edge);border-radius:6px;overflow:hidden;background:var(--white)}
+.filters .seg button{background:none;border:0;padding:7px 13px;cursor:pointer;color:var(--slate);
+  font-size:13.5px;border-right:1px solid var(--edge)}
+.filters .seg button:last-child{border-right:0}
+.filters .seg button[aria-pressed=true]{background:var(--signal-soft);color:var(--signal-deep);font-weight:500}
+.filters select{padding:7px 10px;border:1px solid var(--edge);border-radius:6px;background:var(--white)}
+
+/* ---------- dashboard ---------- */
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(146px,1fr));gap:12px;margin-bottom:18px}
+.tile{background:var(--white);border:1px solid var(--edge);border-radius:8px;padding:13px 15px}
+.tile .t{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--mute);display:block;margin-bottom:4px}
+.tile .v{font-family:var(--cond);font-size:31px;font-weight:600;line-height:1.05;display:block}
+.tile .m{font-size:11.5px;color:var(--mute);display:block;margin-top:2px}
+.tile.hot{border-left:4px solid var(--alert)} .tile.hot .v{color:var(--alert)}
+.tile.warm{border-left:4px solid var(--derived)} .tile.warm .v{color:var(--derived)}
+.tile.cool{border-left:4px solid var(--signal)} .tile.cool .v{color:var(--signal-deep)}
+.tile.good{border-left:4px solid var(--done)} .tile.good .v{color:var(--done)}
+.tile button{background:none;border:0;padding:0;font:inherit;cursor:pointer;text-align:left;width:100%}
+
+.panels{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}
+.pane{background:var(--white);border:1px solid var(--edge);border-radius:8px;padding:17px 19px;margin-bottom:16px}
+.pane h3{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);margin:0 0 14px;font-weight:400}
+
+/* signature: the workload bars */
+.load{margin-bottom:15px}
+.load:last-of-type{margin-bottom:0}
+.load .who{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;gap:12px}
+.load .who span{font-size:13.5px;font-weight:500}
+.load .who em{font-family:var(--mono);font-size:11.5px;color:var(--mute);font-style:normal}
+.stack{display:flex;height:24px;border-radius:4px;overflow:hidden;background:var(--mist);min-width:40px}
+.stack i{display:block;height:100%}
+.legend{display:flex;gap:13px;flex-wrap:wrap;margin-top:13px;font-size:11.5px;color:var(--slate)}
+.legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+
+.rows{font-size:13.5px}
+.rows div{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid var(--mist)}
+.rows div:last-child{border-bottom:0}
+.rows .k{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .track{width:72px;height:7px;background:var(--mist);border-radius:99px;overflow:hidden;flex:none}
+.rows .track i{display:block;height:100%;background:var(--signal)}
+.rows .n{font-family:var(--mono);font-size:12px;color:var(--slate);width:26px;text-align:right;flex:none}
+.rows button{background:none;border:0;padding:0;font:inherit;cursor:pointer;text-align:left;
+  color:var(--signal);text-decoration:underline}
+
+/* ---------- tables ---------- */
+.tablewrap{background:var(--white);border:1px solid var(--edge);border-radius:8px;overflow:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-family:var(--cond);font-weight:600;font-size:12.5px;text-align:left;padding:9px 11px;
+  background:var(--paper);border-bottom:1px solid var(--edge);white-space:nowrap;position:sticky;top:0;z-index:2}
+th .fx{color:var(--derived);font-family:var(--mono);font-size:10px;margin-left:4px}
+th .lk{color:var(--signal);font-family:var(--mono);font-size:10px;margin-left:4px}
+td{padding:6px 11px;border-bottom:1px solid var(--mist);white-space:nowrap;vertical-align:middle}
+td.desc{white-space:normal;min-width:220px}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--signal-soft)}
+tbody tr:last-child td{border-bottom:0}
+td.num{font-family:var(--mono);font-size:12.5px;text-align:right}
+td.key{font-family:var(--mono);font-size:12.5px;color:var(--signal-deep);font-weight:500}
+td.calc{font-family:var(--mono);font-size:12.5px;color:var(--derived)}
+.empty{padding:32px 16px;text-align:center;color:var(--mute);font-size:13.5px}
+
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:99px;
+  background:var(--mist);color:var(--slate);white-space:nowrap}
+.pill[data-s="IN PROGRESS"]{background:var(--signal-soft);color:var(--signal-deep)}
+.pill[data-s="ON HOLD"]{background:var(--derived-soft);color:var(--derived)}
+.pill[data-s="COMPLETE"]{background:var(--done-soft);color:var(--done)}
+.pill[data-s="OVERDUE"]{background:var(--alert-soft);color:var(--alert)}
+.pill[data-s="DUE SOON"]{background:var(--derived-soft);color:var(--derived)}
+
+/* inline editors, managers only */
+td.edit{padding:3px 6px}
+td.edit select,td.edit input{width:100%;min-width:94px;padding:5px 7px;border:1px solid transparent;
+  border-radius:4px;background:transparent;font-size:13px;cursor:pointer}
+td.edit select:hover,td.edit input:hover{border-color:var(--edge);background:var(--white)}
+td.edit select:focus,td.edit input:focus{border-color:var(--signal);background:var(--white)}
+td.edit input[type=date]{font-family:var(--mono);font-size:12.5px}
+td.edit.notes input{min-width:170px}
+td.edit[data-s] select{font-family:var(--mono);font-size:11.5px;border-radius:99px}
+td.edit[data-s="IN PROGRESS"] select{background:var(--signal-soft);color:var(--signal-deep)}
+td.edit[data-s="ON HOLD"] select{background:var(--derived-soft);color:var(--derived)}
+td.edit[data-s="COMPLETE"] select{background:var(--done-soft);color:var(--done)}
+td.edit[data-s="NOT PLANNED"] select{background:var(--mist);color:var(--slate)}
+
+/* ---------- form ---------- */
+.form{background:var(--white);border:1px solid var(--edge);border-radius:8px;padding:20px 22px;max-width:720px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(214px,1fr));gap:15px}
+.f label{display:block;font-weight:500;font-size:13px;margin-bottom:3px}
+.f .hint{display:block;color:var(--mute);font-size:11.5px;margin-bottom:5px;line-height:1.4}
+.f input,.f select,.f textarea{width:100%;padding:8px 10px;border:1px solid var(--edge);
+  border-radius:5px;background:var(--white)}
+.f textarea{min-height:66px;resize:vertical;font-family:inherit}
+.f.wide{grid-column:1/-1}
+.f .fixed{background:var(--mist);border:1px dashed var(--edge);color:var(--slate);
+  padding:8px 10px;border-radius:5px;font-family:var(--mono);font-size:12.5px}
+fieldset{border:0;padding:0;margin:0 0 20px}
+legend{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mute);padding:0;margin-bottom:12px;border-bottom:1px solid var(--mist);
+  width:100%;padding-bottom:6px}
+.combo{position:relative}
+.combo .opts{position:absolute;z-index:9;left:0;right:0;top:100%;margin-top:2px;background:var(--white);
+  border:1px solid var(--edge);border-radius:6px;max-height:230px;overflow:auto;
+  box-shadow:0 6px 20px rgba(22,32,42,.13)}
+.combo .opts button{display:block;width:100%;text-align:left;background:none;border:0;
+  padding:7px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--mist)}
+.combo .opts button:hover{background:var(--signal-soft)}
+.combo .opts .none{padding:9px 11px;color:var(--mute);font-size:12.5px}
+.files{border:1px dashed var(--edge);border-radius:6px;padding:11px 13px;background:var(--paper)}
+.files ul{margin:8px 0 0;padding:0;list-style:none}
+.files li{display:flex;gap:8px;align-items:center;padding:3px 0;font-family:var(--mono);font-size:11.5px}
+.files li button{background:none;border:0;color:var(--alert);cursor:pointer;padding:0 4px;font-size:15px}
+.files a{color:var(--signal)}
+
+/* ---------- detail ---------- */
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(186px,1fr));gap:14px 22px}
+.kv dt{font-size:11.5px;color:var(--mute);margin-bottom:1px}
+.kv dd{margin:0;font-size:14px;word-break:break-word}
+.kv dd.mono{font-family:var(--mono);font-size:13px}
+.kv dd button{background:none;border:0;padding:0;color:var(--signal);cursor:pointer;font:inherit;
+  text-decoration:underline;text-align:left}
+
+/* ---------- banners ---------- */
+.banner{padding:11px 22px;font-size:13.5px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  border-bottom:1px solid var(--edge)}
+.banner.bad{background:var(--alert-soft);color:var(--alert)}
+.banner.good{background:var(--signal-soft);color:var(--signal-deep)}
+.banner b{font-weight:500}
+.banner button{background:none;border:1px solid currentColor;border-radius:5px;padding:4px 11px;
+  font-size:12.5px;cursor:pointer;color:inherit;margin-left:auto}
+.note{background:var(--derived-soft);color:var(--derived);border:1px solid #EBD3AE;border-radius:6px;
+  padding:10px 14px;font-size:13.5px;margin-bottom:16px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+  padding:10px 18px;border-radius:6px;font-size:13.5px;box-shadow:0 4px 16px rgba(22,32,42,.22);z-index:99}
+@media (prefers-reduced-motion:no-preference){.toast{animation:rise .22s ease-out}
+  @keyframes rise{from{opacity:0;transform:translate(-50%,8px)}}}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--edge);
+  border-top-color:var(--signal);border-radius:50%;vertical-align:-1px;margin-right:7px}
+@media (prefers-reduced-motion:no-preference){.spin{animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}}
+@media (max-width:760px){
+  .shell{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--edge);padding-bottom:10px}
+  .main{padding:18px 14px 50px}
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <h1><small>LBBC &middot; maintenance</small>Maintenance management</h1>
+  <div class="readout" id="readout"></div>
+</header>
+<div id="banner"></div>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Sections"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
+<script>
+/* ============================================================
+   1. CONFIG  —  the only part you edit
+   ============================================================ */
+const CONFIG = {
+  clientId: "5cf08e58-b378-4c33-ad73-6a1ba233b4d8",
+  tenantId: "376e6c05-6d6c-4c87-a72f-525d8c163b3b",
+  siteHost: "lbbcltd.sharepoint.com",
+  sitePath: "/sites/GroupRDTeam",
+  filePath: "Maintenance/Maintenance_Management_For_App.xlsx",
+
+  /* Where uploaded files go. Leave blank for an Attachments folder created next
+     to the workbook. Change this one line when the real location is known —
+     links already written keep working wherever they point. */
+  attachmentsFolder: "",
+
+  /* The only accounts that can change a ticket after it has been raised. */
+  managers: ["adam.benn@lbbc.co.uk", "alan.hollings@lbbc.co.uk"],
+
+  refreshSeconds: 60
+};
+
+/* ============================================================
+   2. RULES  —  how this workbook behaves, in one place
+   ============================================================ */
+const RULES = {
+  ticketSheet: "TICKET",
+
+  /* Anyone signed in fills these in, in this order. */
+  raiseFields: ["DATE RAISED", "TYPE", "DESCRIPTION", "LOCATION", "ASSET LABEL", "ATTACHMENTS"],
+  raiseRequired: ["DATE RAISED", "TYPE", "DESCRIPTION", "LOCATION"],
+
+  /* Only managers may set these, and they set them straight in the table. */
+  managerFields: ["STATUS", "OWNER", "METHOD", "DATE PLANNED (W/C)", "PO RAISED", "NOTES"],
+
+  /* Applied to every new ticket. */
+  defaults: { "STATUS": "NOT PLANNED" },
+
+  /* A ticket is open until it is complete. */
+  openStatuses: ["NOT PLANNED", "IN PROGRESS", "ON HOLD"],
+  statusField: "STATUS",
+  ownerField: "OWNER",
+  attachmentField: "ATTACHMENTS",
+  attachmentSeparator: " | ",
+
+  /* Typing dropdowns that read their options from another sheet's column. */
+  links: { "ASSET LABEL": { sheet: "ASSET REGISTER", column: "ASSET LABEL" } },
+
+  /* When the type is planned maintenance, the description comes from the PM schedule. */
+  constrain: [{
+    sheet: "TICKET", when: "TYPE", is: "PLANNED MAINTENANCE",
+    restrict: "DESCRIPTION", from: { sheet: "PM SCHEDULE", column: "TASK DESCRIPTION" }
+  }],
+
+  /* A column whose name means something different on another sheet. */
+  listAlias: {
+    "ASSET REGISTER":    { "STATUS": "ASSET STATUS" },
+    "SERVICE CONTRACTS": { "STATUS": "CONTRACT STATUS" },
+    "PM SCHEDULE":       { "FREQUENCY": "PM FREQUENCY" }
+  },
+
+  order: ["TICKET", "ASSET REGISTER", "PM SCHEDULE", "SERVICE CONTRACTS"],
+  hideColumns: ["Ref"]
+};
+
+/* ============================================================
+   3. GRAPH
+   ============================================================ */
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const SCOPES = ["Sites.ReadWrite.All"];
+let pca = null, account = null, siteId = null, itemId = null, session = null;
+let live = false, err = null, busy = "", isManager = false, lastSync = null;
+
+async function token(){
+  const req = { scopes: SCOPES, account };
+  try { return (await pca.acquireTokenSilent(req)).accessToken; }
+  catch(e){ await pca.acquireTokenRedirect(req); throw new Error("Redirecting to sign in again."); }
+}
+async function g(path, opts={}){
+  const t = await token();
+  const h = { Authorization:"Bearer "+t, "Content-Type":"application/json" };
+  if(session) h["workbook-session-id"] = session;
+  const r = await fetch(GRAPH+path, {...opts, headers:{...h, ...(opts.headers||{})}});
+  if(!r.ok){
+    let d=""; try{ d=(await r.json()).error?.message||""; }catch(e){}
+    throw new Error(`${r.status} on ${path.split("?")[0]}${d?" — "+d:""}`);
+  }
+  return r.status===204 ? null : r.json();
+}
+const wbPath = p => `/sites/${siteId}/drive/items/${itemId}/workbook${p}`;
+const encPath = p => p.split("/").filter(Boolean).map(encodeURIComponent).join("/");
+
+async function initAuth(){
+  pca = new msal.PublicClientApplication({
+    auth:{ clientId:CONFIG.clientId,
+           authority:`https://login.microsoftonline.com/${CONFIG.tenantId||"common"}`,
+           redirectUri: location.origin + location.pathname },
+    cache:{ cacheLocation:"sessionStorage" }
+  });
+  await pca.initialize();
+  const result = await pca.handleRedirectPromise();
+  account = result?.account || pca.getAllAccounts()[0] || null;
+  if(account){
+    pca.setActiveAccount(account);
+    isManager = CONFIG.managers.map(m => m.toLowerCase())
+      .includes(String(account.username||"").toLowerCase());
+  }
+}
+const beginSignIn = () => pca.loginRedirect({ scopes: SCOPES });
+
+/* ---------- attachments ---------- */
+function attachFolder(){
+  if(CONFIG.attachmentsFolder) return CONFIG.attachmentsFolder.replace(/^\/+|\/+$/g,"");
+  return CONFIG.filePath.split("/").slice(0,-1).concat("Attachments").filter(Boolean).join("/");
+}
+let folderReady = false;
+async function ensureFolder(){
+  if(folderReady) return;
+  const path = attachFolder();
+  try { await g(`/sites/${siteId}/drive/root:/${encPath(path)}`); folderReady = true; return; }
+  catch(e){ /* does not exist yet — make it */ }
+  const parts = path.split("/"), name = parts.pop(), parent = parts.join("/");
+  const at = parent ? `/sites/${siteId}/drive/root:/${encPath(parent)}:/children`
+                    : `/sites/${siteId}/drive/root/children`;
+  await g(at, { method:"POST", body:JSON.stringify({
+    name, folder:{}, "@microsoft.graph.conflictBehavior":"replace" }) });
+  folderReady = true;
+}
+async function uploadFile(file){
+  await ensureFolder();
+  const safe = Date.now() + "_" + file.name.replace(/[^\w.\-]/g,"_");
+  const t = await token();
+  const r = await fetch(
+    `${GRAPH}/sites/${siteId}/drive/root:/${encPath(attachFolder()+"/"+safe)}:/content`,
+    { method:"PUT",
+      headers:{ Authorization:"Bearer "+t, "Content-Type": file.type || "application/octet-stream" },
+      body:file });
+  if(!r.ok) throw new Error(`upload of ${file.name} failed (${r.status})`);
+  return (await r.json()).webUrl;
+}
+const splitLinks = v => String(v||"").split(/\s*\|\s*|\n/).map(s => s.trim()).filter(Boolean);
+const joinLinks  = a => a.join(RULES.attachmentSeparator);
+const fileNameOf = u => { try {
+  return decodeURIComponent(String(u).split("/").pop().split("?")[0]).replace(/^\d{10,}_/,"");
+} catch(e){ return "file"; } };
+
+/* ============================================================
+   4. LOAD
+   ============================================================ */
+let SCHEMA = { tables:[] }, DATA = {}, LISTS = {}, FIELDS = {}, SHEETID = {}, RANGE = {};
+
+function isCalc(formulas, i){
+  for(let r=1; r<Math.min(formulas.length, 8); r++){
+    const f = formulas[r] && formulas[r][i];
+    if(typeof f === "string" && f.startsWith("=")) return true;
+  }
+  return false;
+}
+const isDateFmt = f => typeof f === "string" && /y{2,}/i.test(f);
+
+async function loadLive(){
+  busy = "Finding the site"; gate();
+  siteId = (await g(`/sites/${CONFIG.siteHost}:${CONFIG.sitePath}`)).id;
+
+  busy = "Finding the workbook"; gate();
+  itemId = (await g(`/sites/${siteId}/drive/root:/${encPath(CONFIG.filePath)}`)).id;
+
+  busy = "Opening a workbook session"; gate();
+  session = (await g(wbPath("/createSession"),
+    { method:"POST", body:JSON.stringify({persistChanges:true}) })).id;
+
+  busy = "Reading the sheets"; gate();
+  const sheets = (await g(wbPath("/worksheets?$select=id,name"))).value;
+  sheets.forEach(s => { if(s && s.name) SHEETID[s.name] = s.id; });
+
+  const usable = [];
+  for(const sheet of sheets){
+    if(!sheet.name || sheet.name.startsWith("_")) continue;
+    const st = await g(wbPath(`/worksheets/${sheet.id}/tables?$select=id,name`));
+    if(st.value && st.value.length) usable.push({ id:st.value[0].id, name:st.value[0].name, sheet });
+    else console.warn("Sheet with no table on it, skipped:", sheet.name);
+  }
+
+  SCHEMA = { tables:[] }; DATA = {};
+  for(const t of usable){
+    busy = "Reading " + t.sheet.name; gate();
+    const rg = await g(wbPath(`/tables/${t.id}/range?$select=values,formulas,numberFormat,address`));
+    RANGE[t.sheet.name] = parseAddr(rg.address);
+    const hdr = rg.values[0].map(h => String(h??"").trim());
+    const fields = hdr.map((n,i) => ({
+      n, i,
+      fx: isCalc(rg.formulas, i),
+      date: isDateFmt(rg.numberFormat[1] && rg.numberFormat[1][i]),
+      num: !isCalc(rg.formulas,i) &&
+           /^[0#]/.test(String((rg.numberFormat[1] && rg.numberFormat[1][i])||"")),
+      fmt: String((rg.numberFormat[1] && rg.numberFormat[1][i])||"")
+    }));
+    SCHEMA.tables.push({ name:t.sheet.name, table:t.name, id:t.id, sheetId:t.sheet.id,
+                         fields, rows: rg.values.length - 1 });
+    DATA[t.sheet.name] = rg.values.slice(1)
+      .map((row,ri) => rowObj(fields,row,ri)).filter(r => r.__filled);
+  }
+
+  busy = "Reading _Lists and _Fields"; gate();
+  LISTS = {}; FIELDS = {};
+  if(SHEETID["_Lists"]){
+    const u = await g(wbPath(`/worksheets/${SHEETID["_Lists"]}/usedRange?$select=values`));
+    (u.values[1]||[]).forEach((h,c) => { if(!h) return;
+      LISTS[String(h).trim()] = u.values.slice(2).map(r => r[c])
+        .filter(v => v !== "" && v != null).map(String); });
+  }
+  if(SHEETID["_Fields"]){
+    const u = await g(wbPath(`/worksheets/${SHEETID["_Fields"]}/usedRange?$select=values`));
+    u.values.slice(2).forEach(r => { if(r[0] && r[1])
+      FIELDS[String(r[0]).trim()+"|"+String(r[1]).trim()] = String(r[2]||""); });
+  }
+  live = true; busy = ""; lastSync = new Date();
+}
+
+function parseAddr(a){
+  const m = /!\$?([A-Z]+)\$?(\d+):\$?([A-Z]+)\$?(\d+)$/.exec(a);
+  return { c1:m[1], r1:+m[2], c2:m[3], r2:+m[4] };
+}
+const colNum = s => [...s].reduce((n,ch) => n*26 + ch.charCodeAt(0) - 64, 0);
+const colStr = n => { let s = ""; while(n > 0){ const r = (n-1)%26;
+  s = String.fromCharCode(65+r) + s; n = (n-r-1)/26; } return s; };
+function rowObj(fields, row, ri){
+  const o = { __row: ri }; let filled = false;
+  fields.forEach(f => {
+    let v = row[f.i]; if(v === null || v === undefined) v = "";
+    if(f.date && typeof v === "number") v = serialToISO(v);
+    o[f.n] = v;
+    if(!f.fx && v !== "") filled = true;
+  });
+  o.__filled = filled;
+  return o;
+}
+const serialToISO = s => new Date(Math.round((s-25569)*86400000)).toISOString().slice(0,10);
+const isoToSerial = d => { const t = Date.parse(d+"T00:00:00Z"); return isNaN(t) ? d : t/86400000+25569; };
+
+/* ============================================================
+   5. WRITE
+   ============================================================ */
+function cellValue(f, v){
+  if(v === "" || v == null) return null;
+  if(f.date) return isoToSerial(v);
+  if(f.num){ const n = parseFloat(v); return isNaN(n) ? v : n; }
+  return v;
+}
+async function writeRow(tn, values, rowIndex){
+  const t = T[tn], rg = RANGE[tn], row = rg.r1 + 1 + rowIndex;
+  const arr = t.fields.map(f => f.fx ? null : cellValue(f, values[f.n]));
+  await g(wbPath(`/worksheets/${t.sheetId}/range(address='${rg.c1}${row}:${rg.c2}${row}')`),
+          { method:"PATCH", body:JSON.stringify({ values:[arr] }) });
+  await reloadTable(tn);
+}
+async function writeCell(tn, rowIndex, colName, value){
+  const t = T[tn], rg = RANGE[tn], f = t.fields.find(x => x.n === colName);
+  const addr = colStr(colNum(rg.c1) + f.i) + (rg.r1 + 1 + rowIndex);
+  await g(wbPath(`/worksheets/${t.sheetId}/range(address='${addr}')`),
+          { method:"PATCH", body:JSON.stringify({ values:[[cellValue(f, value)]] }) });
+  const rec = (DATA[tn]||[]).find(r => r.__row === rowIndex);
+  if(rec) rec[colName] = value;
+}
+async function reloadTable(tn){
+  const t = T[tn];
+  const rg = await g(wbPath(`/tables/${t.id}/range?$select=values,address`));
+  RANGE[tn] = parseAddr(rg.address);
+  t.rows = rg.values.length - 1;
+  DATA[tn] = rg.values.slice(1).map((row,ri) => rowObj(t.fields,row,ri)).filter(r => r.__filled);
+}
+function nextFreeIndex(tn){
+  const rows = DATA[tn];
+  return rows.length ? Math.max(...rows.map(r => r.__row)) + 1 : 0;
+}
+
+/* ============================================================
+   6. SCHEMA HELPERS
+   ============================================================ */
+let T = {}, TNAMES = [];
+function index(){
+  T = {}; SCHEMA.tables.forEach(t => T[t.name] = t);
+  const named = RULES.order.filter(n => T[n]);
+  TNAMES = [...named, ...SCHEMA.tables.map(t => t.name).filter(n => !named.includes(n))];
+}
+const listKey = (tn,f) => (RULES.listAlias[tn]||{})[f.n] || f.n;
+const listOf  = (tn,f) => LISTS[listKey(tn,f)];
+const desc    = (tn,f) => FIELDS[tn+"|"+f.n] || "";
+function role(tn, f){
+  if(f.fx) return "calc";
+  if(f.n === RULES.attachmentField) return "files";
+  if(RULES.links[f.n]) return "link";
+  if(listOf(tn,f)) return "choice";
+  if(f.date) return "date";
+  if(f.num) return "number";
+  return "text";
+}
+function linkOptions(name){
+  const l = RULES.links[name]; if(!l) return [];
+  return [...new Set((DATA[l.sheet]||[]).map(r => String(r[l.column]??"").trim())
+    .filter(Boolean))].sort();
+}
+function constraintFor(tn, colName, d){
+  const c = RULES.constrain.find(c => c.sheet === tn && c.restrict === colName);
+  if(!c) return null;
+  if(String(d[c.when]??"").toUpperCase() !== c.is.toUpperCase()) return null;
+  return [...new Set((DATA[c.from.sheet]||[]).map(r => String(r[c.from.column]??"").trim())
+    .filter(Boolean))].sort();
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmtDate = s => { if(!s) return ""; const p = String(s).split("-");
+  return p[2] ? `${p[2]}/${p[1]}/${p[0]}` : String(s); };
+const todayISO = () => new Date(Date.now() - new Date().getTimezoneOffset()*60000)
+  .toISOString().slice(0,10);
+function decimalsOf(f){
+  const m = /\.([0#]+)/.exec(f.fmt||""); if(m) return m[1].length;
+  if(/^[0#,$]+$/.test(String(f.fmt||""))) return 0;
+  return 2;
+}
+const fmtNum = (v,f) => v === "" || v == null ? ""
+  : (typeof v === "number" ? +v.toFixed(decimalsOf(f)) : v);
+const tickets = () => DATA[RULES.ticketSheet] || [];
+const statusOf = r => String(r[RULES.statusField]||"").toUpperCase();
+const isOpen = r => !statusOf(r) || RULES.openStatuses.includes(statusOf(r));
+function displayCell(tn, f, v){
+  const rl = role(tn,f);
+  if(rl === "files"){ const n = splitLinks(v).length;
+    return n ? n + " file" + (n>1?"s":"") : ""; }
+  if(rl === "date") return fmtDate(v);
+  if(rl === "number" || rl === "calc") return fmtNum(v,f);
+  return v;
+}
+
+/* ============================================================
+   7. STATE
+   ============================================================ */
+let view = { mode:"dashboard", sheet:null, row:null };
+let draft = {}, pendingFiles = [], q = "";
+let filt = { open:true, owner:"ALL", type:"ALL", status:"ALL" };
+let comboOpen = null;
+
+/* ============================================================
+   8. DASHBOARD
+   ============================================================ */
+function counts(){
+  const rows = tickets();
+  const by = k => rows.reduce((m,r) => {
+    const v = String(r[k]||"").trim().toUpperCase() || "—";
+    m[v] = (m[v]||0)+1; return m; }, {});
+  const pm = DATA["PM SCHEDULE"] || [], contracts = DATA["SERVICE CONTRACTS"] || [];
+  const soon = new Date(Date.now() + 60*86400000).toISOString().slice(0,10);
+  return {
+    total: rows.length,
+    open: rows.filter(isOpen).length,
+    status: by(RULES.statusField), type: by("TYPE"),
+    location: by("LOCATION"), owner: by(RULES.ownerField),
+    overdue: pm.filter(r => String(r.STATUS||"").toUpperCase() === "OVERDUE").length,
+    dueSoon: pm.filter(r => String(r.STATUS||"").toUpperCase() === "DUE SOON").length,
+    expiring: contracts.filter(r => r["EXPIRY DATE"] && String(r["EXPIRY DATE"]) <= soon).length
+  };
+}
+function tile(cls, label, value, meta, action){
+  const inner = `<span class="t">${esc(label)}</span><span class="v">${value}</span>` +
+    (meta ? `<span class="m">${esc(meta)}</span>` : "");
+  return `<div class="tile ${cls}">${action ? `<button ${action}>${inner}</button>` : inner}</div>`;
+}
+function barRows(obj, total, kind){
+  const keys = Object.keys(obj).filter(k => k !== "—").sort((a,b) => obj[b]-obj[a]);
+  if(!keys.length) return `<p class="empty" style="padding:6px 0">Nothing recorded yet.</p>`;
+  return `<div class="rows">` + keys.map(k => `<div>
+      <span class="k"><button data-drill="${esc(kind)}|${esc(k)}">${esc(k)}</button></span>
+      <span class="track"><i style="width:${Math.round(obj[k]/Math.max(total,1)*100)}%"></i></span>
+      <span class="n">${obj[k]}</span></div>`).join("") + `</div>`;
+}
+const SHADE = { "NOT PLANNED":"#9FB0BC", "IN PROGRESS":"#0E7C86",
+                "ON HOLD":"#C98A2E", "COMPLETE":"#27614A" };
+function workload(){
+  const rows = tickets();
+  const owners = [...new Set(rows.map(r => String(r[RULES.ownerField]||"").trim().toUpperCase())
+    .filter(Boolean))];
+  const groups = owners.map(o => ({ name:o,
+    rows: rows.filter(r => String(r[RULES.ownerField]||"").trim().toUpperCase() === o) }));
+  const none = rows.filter(r => !String(r[RULES.ownerField]||"").trim());
+  if(none.length) groups.push({ name:"Nobody yet", rows:none });
+  if(!groups.length) return `<p class="empty">No owners set yet.</p>`;
+  const max = Math.max(...groups.map(g => g.rows.length));
+  let h = "";
+  groups.sort((a,b) => b.rows.length - a.rows.length).forEach(gr => {
+    const open = gr.rows.filter(isOpen).length;
+    h += `<div class="load"><div class="who"><span>${esc(gr.name)}</span>
+      <em>${open} open of ${gr.rows.length}</em></div>
+      <div class="stack" style="width:${Math.max(14, Math.round(gr.rows.length/max*100))}%">`;
+    Object.keys(SHADE).forEach(s => {
+      const n = gr.rows.filter(r => statusOf(r) === s).length;
+      if(n) h += `<i style="width:${n/gr.rows.length*100}%;background:${SHADE[s]}"
+        title="${n} ${s.toLowerCase()}"></i>`;
+    });
+    const blank = gr.rows.filter(r => !statusOf(r)).length;
+    if(blank) h += `<i style="width:${blank/gr.rows.length*100}%;background:#E4E9ED"
+      title="${blank} with no status"></i>`;
+    h += `</div></div>`;
+  });
+  return h + `<div class="legend">` + Object.keys(SHADE).map(s =>
+    `<span><b style="background:${SHADE[s]}"></b>${s.toLowerCase()}</span>`).join("") + `</div>`;
+}
+function dashboard(){
+  const c = counts();
+  const recent = [...tickets()].sort((a,b) => b.__row - a.__row).slice(0,8);
+  const pmDue = (DATA["PM SCHEDULE"]||[])
+    .filter(r => ["OVERDUE","DUE SOON"].includes(String(r.STATUS||"").toUpperCase()))
+    .sort((a,b) => String(a["NEXT DUE"]||"").localeCompare(String(b["NEXT DUE"]||"")));
+
+  let h = `<h2>Dashboard</h2>
+  <p class="sub">Counted straight from the workbook, and updated on its own every
+    ${CONFIG.refreshSeconds} seconds. Every figure below is a link into the tickets behind it.</p>
+  <div class="tiles">
+    ${tile("cool","Open tickets", c.open, `${c.total} raised in total`,
+      `data-drill="open|"`)}
+    ${tile("","Not planned", c.status["NOT PLANNED"]||0, "waiting to be picked up",
+      `data-drill="status|NOT PLANNED"`)}
+    ${tile("cool","In progress", c.status["IN PROGRESS"]||0, "being worked on",
+      `data-drill="status|IN PROGRESS"`)}
+    ${tile("warm","On hold", c.status["ON HOLD"]||0, "blocked or waiting",
+      `data-drill="status|ON HOLD"`)}
+    ${tile("good","Complete", c.status["COMPLETE"]||0, "closed out",
+      `data-drill="status|COMPLETE"`)}
+    ${tile("hot","Overdue PMs", c.overdue, `${c.dueSoon} due soon`, `data-goto="PM SCHEDULE"`)}
+    ${tile(c.expiring ? "warm" : "","Contracts expiring", c.expiring, "within 60 days",
+      `data-goto="SERVICE CONTRACTS"`)}
+  </div>
+  <div class="pane"><h3>Who is carrying what</h3>${workload()}</div>
+  <div class="panels">
+    <div class="pane"><h3>Tickets by type</h3>${barRows(c.type, c.total, "type")}</div>
+    <div class="pane"><h3>Tickets by location</h3>${barRows(c.location, c.total, "location")}</div>
+  </div>
+  <div class="pane"><h3>Planned maintenance needing attention</h3>`;
+  if(!pmDue.length) h += `<p class="empty" style="padding:8px 0">Nothing overdue or due soon.</p>`;
+  else {
+    h += `<div class="tablewrap"><table><thead><tr><th>Task</th><th>Asset</th><th>Next due</th>
+      <th>Status</th><th>Owner</th></tr></thead><tbody>`;
+    pmDue.slice(0,10).forEach(r => h += `<tr><td class="desc">${esc(r["TASK DESCRIPTION"])}</td>
+      <td>${esc(r["ASSET LABEL"])||"&mdash;"}</td><td class="num">${fmtDate(r["NEXT DUE"])}</td>
+      <td><span class="pill" data-s="${esc(String(r.STATUS).toUpperCase())}">${esc(r.STATUS)}</span></td>
+      <td>${esc(r.OWNER)||"&mdash;"}</td></tr>`);
+    h += `</tbody></table></div>`;
+  }
+  h += `</div><div class="pane"><h3>Latest tickets</h3><div class="tablewrap"><table>
+    <thead><tr><th>Ref</th><th>Raised</th><th>Description</th><th>Location</th><th>Status</th>
+    <th>Owner</th></tr></thead><tbody>`;
+  if(!recent.length) h += `<tr><td colspan="6" class="empty">No tickets yet.</td></tr>`;
+  recent.forEach(r => h += `<tr data-ticket="${r.__row}"><td class="key">${esc(r.Ref)}</td>
+    <td class="num">${fmtDate(r["DATE RAISED"])}</td>
+    <td class="desc">${esc(r.DESCRIPTION)||"&mdash;"}</td><td>${esc(r.LOCATION)||"&mdash;"}</td>
+    <td><span class="pill" data-s="${esc(statusOf(r))}">${esc(r[RULES.statusField])||"&mdash;"}</span></td>
+    <td>${esc(r[RULES.ownerField])||"&mdash;"}</td></tr>`);
+  return h + `</tbody></table></div></div>`;
+}
+
+/* ============================================================
+   9. TICKETS
+   ============================================================ */
+function filteredTickets(){
+  const ql = q.toLowerCase();
+  return tickets().filter(r => {
+    if(filt.open && !isOpen(r)) return false;
+    if(filt.status !== "ALL" && statusOf(r) !== filt.status) return false;
+    const own = String(r[RULES.ownerField]||"").trim();
+    if(filt.owner === "NONE" && own) return false;
+    if(filt.owner !== "ALL" && filt.owner !== "NONE" &&
+       own.toUpperCase() !== filt.owner.toUpperCase()) return false;
+    if(filt.type !== "ALL" && String(r.TYPE||"") !== filt.type) return false;
+    if(ql && !Object.keys(r).some(k => !k.startsWith("__") &&
+       String(r[k]??"").toLowerCase().includes(ql))) return false;
+    return true;
+  }).sort((a,b) => b.__row - a.__row);
+}
+function ticketFilters(){
+  const owners = [...new Set(tickets().map(r => String(r[RULES.ownerField]||"").trim())
+    .filter(Boolean))].sort();
+  const types = [...new Set(tickets().map(r => String(r.TYPE||"").trim()).filter(Boolean))].sort();
+  const statuses = LISTS["STATUS"] || [];
+  return `<div class="bar"><div class="filters">
+    <div class="seg">
+      <button data-filt="open|1" aria-pressed="${filt.open === true}">Open only</button>
+      <button data-filt="open|0" aria-pressed="${filt.open === false}">All tickets</button>
+    </div>
+    <div class="seg">
+      <button data-filt="owner|ALL" aria-pressed="${filt.owner === "ALL"}">Anyone</button>
+      ${owners.map(o => `<button data-filt="owner|${esc(o)}"
+        aria-pressed="${filt.owner === o}">${esc(o.split(" ")[0].toLowerCase())}</button>`).join("")}
+      <button data-filt="owner|NONE" aria-pressed="${filt.owner === "NONE"}">unassigned</button>
+    </div>
+    <select data-sel="status"><option value="ALL">Any status</option>
+      ${statuses.map(s => `<option${filt.status === s ? " selected" : ""}>${esc(s)}</option>`).join("")}
+    </select>
+    <select data-sel="type"><option value="ALL">Any type</option>
+      ${types.map(t => `<option${filt.type === t ? " selected" : ""}>${esc(t)}</option>`).join("")}
+    </select>
+    <input class="search" placeholder="Search description, notes, asset" value="${esc(q)}" data-q="1">
+  </div></div>`;
+}
+function editor(tn, f, r){
+  const rl = role(tn,f), v = r[f.n] ?? "";
+  const attr = `data-cell="${r.__row}|${esc(f.n)}"`;
+  if(rl === "choice") return `<select ${attr}><option value=""></option>` +
+    listOf(tn,f).map(o => `<option${String(o) === String(v) ? " selected" : ""}>${esc(o)}</option>`)
+    .join("") + `</select>`;
+  if(rl === "date") return `<input type="date" value="${esc(v)}" ${attr}>`;
+  if(rl === "number") return `<input type="number" step="any" value="${esc(v)}" ${attr}>`;
+  return `<input type="text" value="${esc(v)}" ${attr} placeholder="—">`;
+}
+function ticketList(){
+  const tn = RULES.ticketSheet, t = T[tn];
+  if(!t) return `<p class="empty">The TICKET sheet is not in the workbook.</p>`;
+  const cols = t.fields.filter(f => !RULES.hideColumns.includes(f.n));
+  const rows = filteredTickets();
+  let h = `<h2>Tickets</h2><p class="sub">${isManager
+    ? "Status, owner, method, planned date, PO and notes can be changed straight in the table — each one saves itself as you set it."
+    : "Read only. Adam Benn and Alan Hollings plan the work and set the status."}
+    Click a row for the whole record.</p>
+    <div class="bar"><button class="btn" data-raise="1">Raise a ticket</button></div>`;
+  h += ticketFilters();
+  h += `<p class="sub" style="margin:-6px 0 12px">${rows.length} of ${tickets().length} shown.</p>`;
+  if(!rows.length) return h + `<div class="tablewrap"><p class="empty">
+    Nothing matches those filters.</p></div>`;
+
+  h += `<div class="tablewrap"><table><thead><tr><th>Ref</th>`;
+  cols.forEach(f => h += `<th>${esc(f.n)}${
+    role(tn,f) === "link" ? '<span class="lk">&rarr;</span>' : ""}</th>`);
+  h += `</tr></thead><tbody>`;
+  rows.forEach(r => {
+    h += `<tr data-ticket="${r.__row}"><td class="key">${esc(r.Ref)||"&mdash;"}</td>`;
+    cols.forEach(f => {
+      if(isManager && RULES.managerFields.includes(f.n)){
+        h += `<td class="edit${f.n === "NOTES" ? " notes" : ""}"${
+          f.n === RULES.statusField ? ` data-s="${esc(statusOf(r))}"` : ""}>${editor(tn,f,r)}</td>`;
+      } else if(f.n === RULES.statusField){
+        h += `<td><span class="pill" data-s="${esc(statusOf(r))}">${
+          esc(r[f.n])||"&mdash;"}</span></td>`;
+      } else {
+        const rl = role(tn,f);
+        h += `<td class="${f.n === "DESCRIPTION" ? "desc"
+          : rl === "number" || rl === "date" ? "num" : ""}">${
+          esc(displayCell(tn,f,r[f.n]))||"&mdash;"}</td>`;
+      }
+    });
+    h += `</tr>`;
+  });
+  return h + `</tbody></table></div>`;
+}
+
+/* ============================================================
+   10. RAISE A TICKET
+   ============================================================ */
+function comboField(name, id){
+  const opts = linkOptions(name), v = draft[name] ?? "";
+  const shown = comboOpen === name
+    ? opts.filter(o => o.toLowerCase().includes(String(v).toLowerCase())).slice(0,60) : [];
+  return `<div class="combo">
+    <input id="${id}" type="text" autocomplete="off" data-combo="${esc(name)}" value="${esc(v)}"
+      placeholder="Start typing a ref, a type or a zone">
+    ${comboOpen === name ? `<div class="opts">${shown.length
+      ? shown.map(o => `<button type="button" data-pick="${esc(name)}|${esc(o)}">${esc(o)}</button>`).join("")
+      : `<div class="none">Nothing in the asset register matches that. Leave it blank if no asset
+         is involved.</div>`}</div>` : ""}</div>`;
+}
+function raiseForm(){
+  const tn = RULES.ticketSheet, t = T[tn];
+  let h = `<div class="crumb"><button data-goto="tickets">Tickets</button> / new ticket</div>
+  <h2>Raise a ticket</h2>
+  <p class="sub">Tell us what needs doing and where. It arrives as
+    <span class="pill" data-s="NOT PLANNED">NOT PLANNED</span> for Adam or Alan to pick up.</p>
+  <div class="form"><fieldset><legend>What needs doing</legend><div class="grid">`;
+
+  RULES.raiseFields.forEach(name => {
+    const f = t.fields.find(x => x.n === name); if(!f) return;
+    const rl = role(tn,f), id = "f_"+name.replace(/\W/g,"_"), d = desc(tn,f), v = draft[name] ?? "";
+    const req = RULES.raiseRequired.includes(name);
+    h += `<div class="f${["DESCRIPTION","ASSET LABEL","ATTACHMENTS"].includes(name) ? " wide" : ""}">
+      <label for="${id}">${esc(name)}${req ? "" : " <span style=\"color:var(--mute);font-weight:400\">(optional)</span>"}</label>`;
+    if(d) h += `<span class="hint">${esc(d)}</span>`;
+    const limited = constraintFor(tn, name, draft);
+    if(limited){
+      h += `<select id="${id}" data-f="${esc(name)}">
+        <option value="">Pick the scheduled task</option>` + limited.map(o =>
+        `<option${o === v ? " selected" : ""}>${esc(o)}</option>`).join("") + `</select>
+        <span class="hint">Limited to the PM schedule, because the type is planned maintenance.</span>`;
+    } else if(rl === "link"){
+      h += comboField(name, id);
+    } else if(rl === "choice"){
+      h += `<select id="${id}" data-f="${esc(name)}"><option value="">Select</option>` +
+        listOf(tn,f).map(o => `<option${String(o) === String(v) ? " selected" : ""}>${
+          esc(o)}</option>`).join("") + `</select>`;
+    } else if(rl === "date"){
+      h += `<input id="${id}" type="date" value="${esc(v)}" data-f="${esc(name)}">`;
+    } else if(rl === "files"){
+      h += `<div class="files"><input id="${id}" type="file" multiple data-files="1">
+        <span class="hint" style="margin:7px 0 0">Photos, quotes, drawings — as many as you like.
+          They upload when you save.</span>
+        ${pendingFiles.length ? `<ul>` + pendingFiles.map((file,i) =>
+          `<li>${esc(file.name)} <button type="button" data-drop="${i}"
+            title="Remove">&times;</button></li>`).join("") + `</ul>` : ""}</div>`;
+    } else if(name === "DESCRIPTION"){
+      h += `<textarea id="${id}" data-f="${esc(name)}"
+        placeholder="What is wrong, and where exactly">${esc(v)}</textarea>`;
+    } else {
+      h += `<input id="${id}" type="text" value="${esc(v)}" data-f="${esc(name)}">`;
+    }
+    h += `</div>`;
+  });
+  return h + `</div></fieldset>
+  <fieldset><legend>Filled in for you</legend><div class="grid">
+    <div class="f"><label>STATUS</label><div class="fixed">NOT PLANNED</div></div>
+    <div class="f"><label>Ref</label><div class="fixed">the next ticket number</div></div>
+  </div></fieldset>
+  <div class="bar" style="margin:0"><button class="btn" data-save="1">Raise ticket</button>
+    <button class="btn ghost" data-goto="tickets">Cancel</button></div></div>`;
+}
+
+/* ============================================================
+   11. ONE TICKET
+   ============================================================ */
+function ticketDetail(rowIndex){
+  const tn = RULES.ticketSheet, t = T[tn];
+  const r = (DATA[tn]||[]).find(x => x.__row === rowIndex);
+  if(!r) return `<div class="note">That ticket is no longer in the workbook.</div>
+    <div class="bar"><button class="btn" data-goto="tickets">Back to tickets</button></div>`;
+  const files = splitLinks(r[RULES.attachmentField]);
+  let h = `<div class="crumb"><button data-goto="tickets">Tickets</button> / ${esc(r.Ref)}</div>
+  <h2>${esc(r.DESCRIPTION) || esc(r.Ref) || "Ticket"}</h2>
+  <p class="sub">${esc(r.TYPE)||"no type"} &middot; ${esc(r.LOCATION)||"no location"} &middot;
+    raised ${fmtDate(r["DATE RAISED"])||"—"} &middot;
+    <span class="pill" data-s="${esc(statusOf(r))}">${esc(r[RULES.statusField])||"—"}</span></p>
+  <div class="pane"><h3>The record</h3><dl class="kv">`;
+  t.fields.forEach(f => {
+    if(f.n === RULES.attachmentField) return;
+    const rl = role(tn,f), v = r[f.n] ?? "";
+    h += `<div><dt>${esc(f.n)}</dt><dd class="${rl === "number" ? "mono" : ""}">`;
+    if(rl === "link" && v){
+      const l = RULES.links[f.n];
+      const has = (DATA[l.sheet]||[]).some(x => String(x[l.column]) === String(v));
+      h += has ? `<button data-goto="${esc(l.sheet)}" data-find="${esc(v)}">${esc(v)}</button>`
+               : esc(v);
+    } else h += esc(displayCell(tn,f,v)) || "&mdash;";
+    h += `</dd></div>`;
+  });
+  h += `</dl></div><div class="pane"><h3>Attachments</h3>`;
+  h += files.length
+    ? `<ul style="margin:0;padding-left:18px;font-size:13.5px">` + files.map(u =>
+        `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(fileNameOf(u))}</a></li>`)
+        .join("") + `</ul>`
+    : `<p class="empty" style="padding:6px 0">Nothing attached yet.</p>`;
+  h += `<div class="files" style="margin-top:12px">
+    <input type="file" multiple data-addfiles="${rowIndex}">
+    <span class="hint" style="display:block;margin-top:7px;color:var(--mute);font-size:11.5px">
+      Anyone can add photos or paperwork to a ticket. They upload as soon as you choose them, and
+      are added to whatever is already here.</span></div></div>`;
+
+  if(isManager){
+    h += `<div class="pane"><h3>Planning — each field saves as you set it</h3><div class="grid">`;
+    RULES.managerFields.forEach(name => {
+      const f = t.fields.find(x => x.n === name); if(!f) return;
+      h += `<div class="f"><label>${esc(name)}</label>`;
+      const d = desc(tn,f); if(d) h += `<span class="hint">${esc(d)}</span>`;
+      h += editor(tn,f,r) + `</div>`;
+    });
+    h += `</div></div>`;
+  }
+  return h;
+}
+
+/* ============================================================
+   12. THE OTHER SHEETS
+   ============================================================ */
+function sheetTable(tn){
+  const t = T[tn]; if(!t) return `<p class="empty">That sheet is not in the workbook.</p>`;
+  const cols = t.fields.filter(f => !RULES.hideColumns.includes(f.n));
+  const ql = q.toLowerCase();
+  const all = DATA[tn] || [];
+  const rows = all.filter(r => !ql || cols.some(f =>
+    String(r[f.n]??"").toLowerCase().includes(ql)));
+  let h = `<h2>${esc(tn)}</h2><p class="sub">Excel table <code>${esc(t.table)}</code> &middot;
+    ${all.length} rows &middot; read only here — this one is maintained in the workbook.</p>
+    <div class="bar"><input class="search" placeholder="Filter rows" value="${esc(q)}" data-q="1"></div>`;
+  if(!rows.length) return h + `<div class="tablewrap"><p class="empty">${
+    all.length ? "No rows match that filter." : "No rows yet."}</p></div>`;
+  h += `<div class="tablewrap"><table><thead><tr>`;
+  cols.forEach(f => h += `<th>${esc(f.n)}${
+    role(tn,f) === "calc" ? '<span class="fx">fx</span>' : ""}</th>`);
+  h += `</tr></thead><tbody>`;
+  rows.forEach(r => {
+    h += `<tr>`;
+    cols.forEach(f => {
+      const rl = role(tn,f), v = r[f.n] ?? "";
+      if(f.n === "STATUS" && ["OVERDUE","DUE SOON"].includes(String(v).toUpperCase()))
+        h += `<td><span class="pill" data-s="${esc(String(v).toUpperCase())}">${esc(v)}</span></td>`;
+      else h += `<td class="${rl === "calc" ? "calc"
+        : rl === "number" || rl === "date" ? "num"
+        : /DESCRIPTION|NOTES|SCOPE|COVERED|ZONE/.test(f.n) ? "desc" : ""}">${
+        esc(displayCell(tn,f,v))||"&mdash;"}</td>`;
+    });
+    h += `</tr>`;
+  });
+  return h + `</tbody></table></div>`;
+}
+
+/* ============================================================
+   13. RENDER
+   ============================================================ */
+function banner(){
+  if(err) return `<div class="banner bad"><b>Could not reach the workbook.</b> ${esc(err)}
+    <button data-retry="1">Try again</button></div>`;
+  if(busy) return `<div class="banner good"><span class="spin"></span>${esc(busy)}&hellip;</div>`;
+  return `<div class="banner good"><b>${isManager ? "Signed in as a planner." : "Signed in."}</b>
+    ${isManager ? "You can raise tickets, and change the status, owner and notes on any of them."
+                : "You can raise tickets and see everything. Adam and Alan plan the work."}
+    <button data-refresh="1">Refresh now</button></div>`;
+}
+function readout(){
+  const c = counts();
+  return `<span class="live">live from <b>${esc(CONFIG.filePath.split("/").pop())}</b></span>
+    <span><b>${c.open}</b> open</span><span><b>${c.overdue}</b> overdue PMs</span>
+    ${lastSync ? `<span>updated ${lastSync.toLocaleTimeString("en-GB",
+      {hour:"2-digit",minute:"2-digit"})}</span>` : ""}
+    <span>${esc(account && (account.name || account.username) || "")}</span>
+    <button data-signout="1">Sign out</button>`;
+}
+function rail(){
+  const c = counts();
+  const btn = (id, label, n, cur) => `<button data-goto="${esc(id)}" aria-current="${cur}">
+    <span>${esc(label)}</span>${n != null ? `<span class="n">${n}</span>` : ""}</button>`;
+  let h = `<div class="rail-head">Maintenance</div>`;
+  h += btn("dashboard", "Dashboard", null, view.mode === "dashboard");
+  h += btn("tickets", "Tickets", c.open, view.mode === "tickets" || view.mode === "ticket");
+  h += `<button class="raise" data-raise="1">Raise a ticket</button>`;
+  h += `<div class="rail-head">Registers</div>`;
+  TNAMES.filter(n => n !== RULES.ticketSheet).forEach(n =>
+    h += btn(n, n, (DATA[n]||[]).length, view.mode === "sheet" && view.sheet === n));
+  return h;
+}
+function render(){
+  document.getElementById("banner").innerHTML = banner();
+  document.getElementById("readout").innerHTML = readout();
+  document.getElementById("rail").innerHTML = rail();
+  const m = document.getElementById("main");
+  try {
+    m.innerHTML =
+      view.mode === "dashboard" ? dashboard() :
+      view.mode === "tickets"   ? ticketList() :
+      view.mode === "raise"     ? raiseForm()  :
+      view.mode === "ticket"    ? ticketDetail(view.row) : sheetTable(view.sheet);
+  } catch(e){
+    console.error("Render failed:", e);
+    m.innerHTML = `<div class="note">Something went wrong showing this screen: ${esc(e.message)}
+      <br>Press F12 and look at the Console tab for the detail if it keeps happening.</div>
+      <div class="bar"><button class="btn" data-goto="dashboard">Back to the dashboard</button></div>`;
+  }
+  wire();
+}
+function toast(m){
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const d = document.createElement("div"); d.className = "toast"; d.textContent = m;
+  document.body.appendChild(d); setTimeout(() => d.remove(), 3200);
+}
+const on = (sel, fn) => document.querySelectorAll(sel).forEach(fn);
+
+/* ============================================================
+   14. EVENTS
+   ============================================================ */
+function go(v){ view = v; window.scrollTo({top:0,behavior:"smooth"}); render(); }
+
+function wire(){
+  on("[data-goto]", b => b.onclick = e => {
+    e.stopPropagation();
+    const to = b.dataset.goto;
+    if(b.dataset.find) q = b.dataset.find; else q = "";
+    go(to === "dashboard" ? { mode:"dashboard" }
+     : to === "tickets"   ? { mode:"tickets" }
+     : { mode:"sheet", sheet:to });
+  });
+  on("[data-raise]", b => b.onclick = () => {
+    draft = { ...RULES.defaults, "DATE RAISED": todayISO() };
+    pendingFiles = []; comboOpen = null;
+    go({ mode:"raise" });
+  });
+  on("[data-drill]", b => b.onclick = e => {
+    e.stopPropagation();
+    const [kind, val] = b.dataset.drill.split("|");
+    filt = { open:false, owner:"ALL", type:"ALL", status:"ALL" };
+    q = "";
+    if(kind === "open") filt.open = true;
+    if(kind === "status") filt.status = val;
+    if(kind === "type") filt.type = val;
+    if(kind === "location") q = val;
+    go({ mode:"tickets" });
+  });
+  on("[data-ticket]", tr => tr.onclick = () => go({ mode:"ticket", row:+tr.dataset.ticket }));
+  on("[data-retry]", b => b.onclick = () => { err = null; boot(); });
+  on("[data-refresh]", b => b.onclick = () => sync(true));
+  on("[data-signout]", b => b.onclick = () => pca.logoutRedirect());
+
+  /* filters */
+  on("[data-filt]", b => b.onclick = () => {
+    const [k, v] = b.dataset.filt.split("|");
+    if(k === "open") filt.open = v === "1";
+    else filt[k] = v;
+    if(k === "open" && filt.open) filt.status = "ALL";
+    render();
+  });
+  on("[data-sel]", s => s.onchange = () => {
+    filt[s.dataset.sel] = s.value;
+    if(s.dataset.sel === "status" && s.value !== "ALL") filt.open = false;
+    render();
+  });
+  const sb = document.querySelector("[data-q]");
+  if(sb) sb.oninput = () => {
+    const p = sb.selectionStart; q = sb.value; render();
+    const n = document.querySelector("[data-q]");
+    if(n){ n.focus(); n.setSelectionRange(p,p); }
+  };
+
+  /* raise form */
+  on("[data-f]", el => {
+    el.onchange = () => { draft[el.dataset.f] = el.value; if(el.tagName === "SELECT") render(); };
+    el.oninput = () => { draft[el.dataset.f] = el.value; };
+  });
+  on("[data-combo]", el => {
+    const keep = fn => { const p = el.selectionStart; fn(); render();
+      const n = document.querySelector("[data-combo]");
+      if(n){ n.focus(); n.setSelectionRange(p,p); } };
+    el.onfocus = () => { if(comboOpen !== el.dataset.combo) keep(() => comboOpen = el.dataset.combo); };
+    el.oninput = () => keep(() => { comboOpen = el.dataset.combo;
+      draft[el.dataset.combo] = el.value; });
+    el.onblur = () => setTimeout(() => {
+      if(comboOpen === el.dataset.combo && !document.querySelector("[data-pick]:hover")){
+        comboOpen = null; render();
+      }
+    }, 180);
+  });
+  on("[data-pick]", b => b.onmousedown = () => {
+    const i = b.dataset.pick.indexOf("|");
+    draft[b.dataset.pick.slice(0,i)] = b.dataset.pick.slice(i+1);
+    comboOpen = null; render();
+  });
+  on("[data-files]", el => el.onchange = () => {
+    pendingFiles = pendingFiles.concat([...el.files]); render();
+  });
+  on("[data-drop]", b => b.onclick = () => { pendingFiles.splice(+b.dataset.drop, 1); render(); });
+  const sv = document.querySelector("[data-save]");
+  if(sv) sv.onclick = raise;
+
+  /* the managers' inline edits */
+  on("[data-cell]", el => {
+    const i = el.dataset.cell.indexOf("|");
+    const row = +el.dataset.cell.slice(0,i), col = el.dataset.cell.slice(i+1);
+    el.onclick = e => e.stopPropagation();
+    const commit = async () => {
+      const rec = (DATA[RULES.ticketSheet]||[]).find(r => r.__row === row);
+      const before = rec ? (rec[col] ?? "") : "";
+      if(String(before) === String(el.value)) return;
+      el.disabled = true;
+      try {
+        await writeCell(RULES.ticketSheet, row, col, el.value);
+        el.disabled = false;
+        toast(`${col.toLowerCase()} saved`);
+        if(col === RULES.statusField || col === RULES.ownerField) render();
+        else document.getElementById("readout").innerHTML = readout();
+      } catch(e){
+        el.disabled = false; el.value = before;
+        toast("Not saved — " + e.message);
+      }
+    };
+    if(el.tagName === "SELECT" || el.type === "date") el.onchange = commit;
+    else { el.onblur = commit; el.onkeydown = e => { if(e.key === "Enter") el.blur(); }; }
+  });
+  on("[data-addfiles]", el => el.onchange = async () => {
+    const row = +el.dataset.addfiles, files = [...el.files];
+    if(!files.length) return;
+    try {
+      busy = `Uploading ${files.length} file${files.length > 1 ? "s" : ""}`; render();
+      const links = [];
+      for(const f of files) links.push(await uploadFile(f));
+      const rec = (DATA[RULES.ticketSheet]||[]).find(r => r.__row === row);
+      await writeCell(RULES.ticketSheet, row, RULES.attachmentField,
+        joinLinks(splitLinks(rec[RULES.attachmentField]).concat(links)));
+      busy = ""; render();
+      toast(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
+    } catch(e){ busy = ""; render(); toast("Upload failed — " + e.message); }
+  });
+}
+
+async function raise(){
+  const tn = RULES.ticketSheet;
+  const missing = RULES.raiseRequired.filter(k => !String(draft[k]||"").trim());
+  if(missing.length) return toast(`Fill in ${missing.join(", ").toLowerCase()} first`);
+
+  const chosen = String(draft["ASSET LABEL"]||"").trim();
+  if(chosen && !linkOptions("ASSET LABEL").includes(chosen))
+    return toast("Pick the asset from the list, or clear that box if no asset is involved");
+
+  const idx = nextFreeIndex(tn);
+  if(idx >= T[tn].rows)
+    return toast("The TICKET table is full. Add more rows to it in the workbook first.");
+
+  const btn = document.querySelector("[data-save]");
+  if(btn) btn.disabled = true;
+  try {
+    if(pendingFiles.length){
+      busy = `Uploading ${pendingFiles.length} file${pendingFiles.length > 1 ? "s" : ""}`; render();
+      const links = [];
+      for(const f of pendingFiles) links.push(await uploadFile(f));
+      draft[RULES.attachmentField] = joinLinks(links);
+    }
+    busy = "Saving the ticket"; render();
+    await writeRow(tn, { ...RULES.defaults, ...draft }, idx);
+    busy = ""; lastSync = new Date();
+    const saved = (DATA[tn]||[]).find(r => r.__row === idx);
+    draft = {}; pendingFiles = []; comboOpen = null;
+    go(saved ? { mode:"ticket", row:idx } : { mode:"tickets" });
+    toast(saved && saved.Ref ? `${saved.Ref} raised` : "Ticket raised");
+  } catch(e){
+    busy = ""; render();
+    toast("Not saved — " + e.message);
+  }
+}
+
+/* ============================================================
+   15. AUTO REFRESH
+   Quiet by design: it never interrupts something you are doing.
+   ============================================================ */
+async function sync(loud){
+  if(!live) return;
+  const typing = document.activeElement &&
+    ["INPUT","SELECT","TEXTAREA"].includes(document.activeElement.tagName);
+  if(!loud && (view.mode === "raise" || typing || document.hidden)) return;
+  try {
+    if(loud){ busy = "Refreshing"; render(); }
+    for(const t of SCHEMA.tables) await reloadTable(t.name);
+    lastSync = new Date(); busy = ""; render();
+    if(loud) toast("Refreshed from the workbook");
+  } catch(e){
+    busy = "";
+    if(loud){ err = e.message; render(); }
+    else console.warn("Background refresh skipped:", e.message);
+  }
+}
+setInterval(() => sync(false), Math.max(15, CONFIG.refreshSeconds) * 1000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) sync(false); });
+
+/* ============================================================
+   16. SIGN-IN GATE
+   Nothing about the workbook renders until Microsoft confirms who
+   this is. The app registration is single-tenant, so that gate is
+   also, automatically, an LBBC-only gate.
+   ============================================================ */
+let gateErr = null, gateBusy = "Loading";
+function gate(){
+  document.getElementById("banner").innerHTML = "";
+  document.getElementById("readout").innerHTML = "";
+  document.getElementById("rail").innerHTML = "";
+  document.getElementById("main").innerHTML = `
+    <div class="pane" style="max-width:470px;margin:60px auto;text-align:center">
+      <h2 style="margin-bottom:6px">Maintenance management</h2>
+      <p class="sub">Sign in with your LBBC Microsoft account to raise a ticket or see where
+        maintenance stands. Nothing on this page is visible before that, and only LBBC accounts
+        can sign in.</p>
+      ${gateErr ? `<div class="note" style="text-align:left">${esc(gateErr)}</div>` : ""}
+      <button class="btn" id="signin" ${gateBusy ? "disabled" : ""}>
+        ${gateBusy ? `<span class="spin"></span>${esc(gateBusy)}&hellip;`
+                   : "Sign in with Microsoft"}</button>
+    </div>`;
+  const b = document.getElementById("signin");
+  if(b) b.onclick = () => {
+    gateErr = null; gateBusy = "Taking you to Microsoft sign-in"; gate();
+    beginSignIn().catch(e => { gateBusy = ""; gateErr = e.message || String(e); gate(); });
+  };
+}
+
+/* ============================================================
+   17. BOOT
+   ============================================================ */
+async function boot(){
+  gateBusy = "Loading the workbook"; gate();
+  try { await loadLive(); index(); gateBusy = ""; view = { mode:"dashboard" }; render(); }
+  catch(e){ gateBusy = ""; gateErr = e.message || String(e); gate(); }
+}
+gate();
+(async () => {
+  try {
+    if(!CONFIG.clientId){
+      gateBusy = ""; gateErr = "This app has not been connected to a workbook yet."; gate(); return;
+    }
+    await initAuth();
+    if(account) await boot();
+    else { gateBusy = ""; gate(); }
+  } catch(e){ gateBusy = ""; gateErr = e.message || String(e); gate(); }
+})();
+</script>
+</body>
+</html>
