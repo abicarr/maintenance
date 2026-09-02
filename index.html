@@ -239,16 +239,21 @@ legend{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transfor
    1. CONFIG  —  the only part you edit
    ============================================================ */
 const CONFIG = {
-  clientId: "5cf08e58-b378-4c33-ad73-6a1ba233b4d8",
+  clientId: "77951dfc-0c80-4de3-94d4-42f1d97dbdc6",
   tenantId: "376e6c05-6d6c-4c87-a72f-525d8c163b3b",
   siteHost: "lbbcltd.sharepoint.com",
   sitePath: "/sites/GroupRDTeam",
-  filePath: "Maintenance/Maintenance_Management_For_App.xlsx",
+  filePath: "Projects/2406 Predict Leachability of Cores/Phases/2026 Summer Programme/6 Maintenance App/App/Maintenance_Management_For_App.xlsx",
 
   /* Where uploaded files go. Leave blank for an Attachments folder created next
      to the workbook. Change this one line when the real location is known —
      links already written keep working wherever they point. */
   attachmentsFolder: "",
+
+  /* Must match a Redirect URI on the app registration exactly, trailing slash
+     included. Leave blank to use whatever URL the page is open at, with any
+     index.html trimmed off the end. */
+  redirectUri: "https://abicarr.github.io/maintenance/",
 
   /* The only accounts that can change a ticket after it has been raised. */
   managers: ["adam.benn@lbbc.co.uk", "alan.hollings@lbbc.co.uk"],
@@ -327,10 +332,11 @@ const wbPath = p => `/sites/${siteId}/drive/items/${itemId}/workbook${p}`;
 const encPath = p => p.split("/").filter(Boolean).map(encodeURIComponent).join("/");
 
 async function initAuth(){
+  const here = location.origin + location.pathname.replace(/index\.html?$/i, "");
   pca = new msal.PublicClientApplication({
     auth:{ clientId:CONFIG.clientId,
            authority:`https://login.microsoftonline.com/${CONFIG.tenantId||"common"}`,
-           redirectUri: location.origin + location.pathname },
+           redirectUri: CONFIG.redirectUri || here },
     cache:{ cacheLocation:"sessionStorage" }
   });
   await pca.initialize();
